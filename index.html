@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referral Program</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="card" id="auth-section">
+        <h2>Login/Signup</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="handleAuth()">Continue</button>
+    </div>
+
+    <div class="card" id="referral-section" style="display:none">
+        <h2>Your Referral Code</h2>
+        <div id="user-code"></div>
+        <button onclick="copyCode()">Copy Code</button>
+        
+        <h3>Use a Referral Code</h3>
+        <input type="text" id="referral-code-input" placeholder="Enter friend's code">
+        <button onclick="applyReferral()">Apply Code</button>
+        
+        <h3>Your Referrals</h3>
+        <div id="referrals-list"></div>
+    </div>
+
+    <script>
+        // Supabase Initialization
+        const supabaseUrl = 'https://oexmwlofkkmngszkalgw.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9leG13bG9ma2ttbmdzemthbGd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTc5MDksImV4cCI6MjA2MTA5MzkwOX0.ib6Yr1gDL1i_M-43nWJZc1yeDZwHxklKoezC_4ZCN80';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Authentication
+        async function handleAuth() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const { user, error } = await supabase.auth.signIn({
+                email,
+                password
+            });
+            
+            if(user) {
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('referral-section').style.display = 'block';
+                loadUserData();
+            }
+        }
+
+        // Load User Data
+        async function loadUserData() {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            // Get user's referral code
+            const { data, error } = await supabase
+                .from('users')
+                .select('referral_code, bonus_points')
+                .eq('id', user.id)
+                .single();
+                
+            document.getElementById('user-code').innerText = data.referral_code;
+            
+            // Load referrals
+            loadReferrals();
+        }
+
+        // Apply Referral Code
+        async function applyReferral() {
+            const code = document.getElementById('referral-code-input').value;
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            const { data, error } = await supabase.rpc('process_referral', {
+                referral_code_input: code,
+                referee_id_input: user.id
+            });
+            
+            if(error) {
+                alert(error.message);
+            } else {
+                alert('Referral applied successfully!');
+                loadUserData();
+            }
+        }
+
+        // Copy Code Function
+        function copyCode() {
+            const code = document.getElementById('user-code').innerText;
+            navigator.clipboard.writeText(code);
+            alert('Code copied!');
+        }
+
+        // Load Referrals List
+        async function loadReferrals() {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            const { data, error } = await supabase
+                .from('referrals')
+                .select('created_at, users!referrals_referee_id_fkey(email)')
+                .eq('referrer_id', user.id);
+                
+            let html = '<ul>';
+            data.forEach(ref => {
+                html += `<li>${ref.users.email} - ${new Date(ref.created_at).toLocaleDateString()}</li>`;
+            });
+            html += '</ul>';
+            
+            document.getElementById('referrals-list').innerHTML = html;
+        }
+    </script>
+    
+    <!-- Include Supabase JS -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</body>
+  </html>
