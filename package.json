@@ -1,0 +1,26 @@
+{
+  "name": "referral-app",
+  "version": "1.0.0",
+  "description": "Referral program using Netlify Functions and MongoDB Atlas",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo \"No build step\"",
+    "start": "netlify dev"
+  },
+  "dependencies": {
+    "mongodb": "^5.7.0",
+    "nanoid": "^4.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^15.0.0"
+  },
+  "keywords": [
+    "netlify",
+    "mongodb",
+    "referral",
+    "functions"
+  ],
+  "author": "",
+  "license": "MIT"
+}
