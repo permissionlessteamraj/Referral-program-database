@@ -1,8 +1,7 @@
-// dependencies: npm install mongodb nanoid
 const { MongoClient } = require("mongodb");
 const { nanoid } = require("nanoid");
 
-let clientPromise = null;
+let clientPromise;
 function getClient() {
   if (!clientPromise) {
     clientPromise = MongoClient.connect(process.env.MONGODB_URI, {
@@ -13,19 +12,28 @@ function getClient() {
 }
 
 exports.handler = async (event) => {
-  const { creator } = JSON.parse(event.body || "{}");
-  const code = nanoid(10);           // 10-character code
   try {
+    const { creator } = JSON.parse(event.body || "{}");
+    const code = nanoid(10);
     const client = await getClient();
-    const db = client.db();          // database from URI: "referrals"
+    const db = client.db();  
     await db.collection("referrals").insertOne({
       code,
       creator: creator || "Anonymous",
       uses: 0,
       createdAt: new Date()
     });
-    return { statusCode: 200, body: JSON.stringify({ code }) };
+    return {
+      statusCode: 200,
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify({ code })
+    };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    console.error("GENERATE ERROR:", err);
+    return {
+      statusCode: 500,
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify({ error: err.message })
+    };
   }
 };
