@@ -1,6 +1,6 @@
 const { MongoClient } = require("mongodb");
 
-let clientPromise = null;
+let clientPromise;
 function getClient() {
   if (!clientPromise) {
     clientPromise = MongoClient.connect(process.env.MONGODB_URI, {
@@ -11,22 +11,20 @@ function getClient() {
 }
 
 exports.handler = async (event) => {
-  const { code } = JSON.parse(event.body || "{}");
   try {
+    const { code } = JSON.parse(event.body || "{}");
     const client = await getClient();
     const db = client.db();
-    // खोजो कोड
     const result = await db.collection("referrals")
       .findOneAndUpdate(
         { code },
         { $inc: { uses: 1 } },
         { returnDocument: "after" }
       );
-    if (!result.value) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Invalid referral code." }) };
-    }
+    if (!result.value) throw new Error("Invalid referral code.");
     return {
       statusCode: 200,
+      headers: { "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({
         success: true,
         creator: result.value.creator,
@@ -34,7 +32,11 @@ exports.handler = async (event) => {
       })
     };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    console.error("REDEEM ERROR:", err);
+    return {
+      statusCode: err.message === "Invalid referral code." ? 400 : 500,
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify({ error: err.message })
+    };
   }
 };
-
