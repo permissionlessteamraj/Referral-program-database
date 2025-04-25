@@ -1,150 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Referral System</title>
-    <style>
-        :root {
-            --primary: #6366f1;
-            --github: #181717;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .github-btn {
-            background: var(--github);
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 20px auto;
-        }
-
-        .github-btn img {
-            height: 24px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Referral Program</title>
+  <link href="https://cdn.jsdelivr.net/npm/@patternfly/patternfly/patternfly.min.css" rel="stylesheet">
+  <style>
+    .glass-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 2rem auto;
+    }
+  </style>
 </head>
 <body>
+  <div id="app">
     <!-- Auth Section -->
-    <div id="authSection">
-        <h2>Sign in with GitHub to access referral program</h2>
-        <button class="github-btn" onclick="handleGitHubSignIn()">
-            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark-Light-32px.png" alt="GitHub">
-            Continue with GitHub
-        </button>
+    <div class="glass-card" id="authSection">
+      <h1>🚀 Join Our Referral Program</h1>
+      <button id="githubAuthBtn" class="pf-c-button pf-m-primary">
+        <img src="https://github.githubassets.com/favicons/favicon-dark.png" width="20">
+        Sign in with GitHub
+      </button>
     </div>
 
-    <!-- Referral Dashboard -->
-    <div class="hidden" id="dashboard">
-        <div class="user-info">
-            <img id="userAvatar" width="100" style="border-radius: 50%">
-            <h2 id="userName"></h2>
-            <p id="userEmail"></p>
-        </div>
-
-        <div class="referral-section">
-            <h3>Your Referral Code</h3>
-            <div class="referral-code" id="userCode"></div>
-            <button onclick="copyCode()">📋 Copy Code</button>
-        </div>
-
-        <button onclick="handleSignOut()" style="margin-top: 20px;">Sign Out</button>
+    <!-- Dashboard -->
+    <div class="glass-card hidden" id="dashboard">
+      <h2>Welcome, <span id="username"></span>!</h2>
+      <div class="referral-code">
+        Your Code: <strong id="userCode"></strong>
+        <button id="copyBtn">📋 Copy</button>
+      </div>
+      <input type="text" id="referralInput" placeholder="Enter friend's code">
+      <button id="applyBtn">Apply Code</button>
+      <div id="status"></div>
     </div>
-
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script>
-        // Supabase Configuration
-        const SUPABASE_URL = 'https://oexmwlofkkmngszkalgw.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9leG13bG9ma2ttbmdzemthbGd3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTUxNzkwOSwiZXhwIjoyMDYxMDkzOTA5fQ.Mg4MswOP1BSK6w3pL88DpcLNM5erSEA1h6Ea2DXKYnY';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // GitHub Sign-in
-        async function handleGitHubSignIn() {
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'github',
-                options: {
-                    redirectTo: window.location.href
-                }
-            });
-        }
-
-        // Sign Out
-        async function handleSignOut() {
-            await supabase.auth.signOut();
-            window.location.reload();
-        }
-
-        // Auth State Listener
-        supabase.auth.onAuthStateChange(async (event, session) => {
-            if (session?.user) {
-                // Show dashboard
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboard').classList.remove('hidden');
-                
-                // Update user info
-                document.getElementById('userAvatar').src = session.user.user_metadata.avatar_url;
-                document.getElementById('userName').textContent = session.user.user_metadata.user_name;
-                document.getElementById('userEmail').textContent = session.user.email;
-
-                // Check/Generate Referral Code
-                await checkOrCreateUserProfile(session.user);
-                loadUserData();
-            }
-        });
-
-        // Create User Profile if not exists
-        async function checkOrCreateUserProfile(user) {
-            const { data, error } = await supabase
-                .from('users')
-                .select()
-                .eq('id', user.id)
-                .single();
-
-            if(!data) {
-                // Generate referral code
-                const code = Math.random().toString(36).substring(2,10).toUpperCase();
-                
-                await supabase.from('users').insert({
-                    id: user.id,
-                    email: user.email,
-                    github_username: user.user_metadata.user_name,
-                    referral_code: code,
-                    bonus_points: 0
-                });
-            }
-        }
-
-        // Load User Data
-        async function loadUserData() {
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            const { data } = await supabase
-                .from('users')
-                .select('referral_code, bonus_points')
-                .eq('id', user.id)
-                .single();
-
-            document.getElementById('userCode').textContent = data.referral_code;
-        }
-
-        // Copy Referral Code
-        async function copyCode() {
-            const code = document.getElementById('userCode').textContent;
-            navigator.clipboard.writeText(code);
-            alert('Code copied to clipboard!');
-        }
-    </script>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>
